@@ -1,10 +1,9 @@
 name: scrape
 
 on:
-  # Вимкнено, доки раннери GitHub не проходять WAF ДТЕК: інакше провал і лист кожні 10 хвилин.
-  # schedule:
-  #   # Кожні 10 хвилин, час UTC. Зсув на 2 хвилини: на початку години черга GitHub найбільша.
-  #   - cron: '2-59/10 * * * *'
+  schedule:
+    # Кожні 10 хвилин, час UTC. Зсув на 2 хвилини: на початку години черга GitHub найбільша.
+    - cron: '2-59/10 * * * *'
   workflow_dispatch:
   # Перевірити парсер одразу після змін у ньому. Коміти бота з GITHUB_TOKEN нових запусків не створюють.
   push:
@@ -24,7 +23,8 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    # Не ubuntu-latest: з 19.10.2026 це Ubuntu 26, і playwright install --with-deps може її ще не підтримувати.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
