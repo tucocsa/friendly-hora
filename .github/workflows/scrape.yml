@@ -1,0 +1,48 @@
+name: scrape
+
+on:
+  schedule:
+    # Кожні 10 хвилин, час UTC. Зсув на 2 хвилини: на початку години черга GitHub найбільша.
+    - cron: '2-59/10 * * * *'
+  workflow_dispatch:
+  # Перевірити парсер одразу після змін у ньому. Коміти бота з GITHUB_TOKEN нових запусків не створюють.
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/scrape.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: node src/scrape.js
+        env:
+          DTEK_GROUP: ${{ vars.DTEK_GROUP }}
+      - name: Commit schedule.json if changed
+        run: |
+          # add перед diff: інакше новий, ще не відстежуваний файл не потрапить у коміт.
+          git add schedule.json
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'schedule: update'
+          git pull --rebase
+          git push
