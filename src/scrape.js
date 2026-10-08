@@ -33,7 +33,7 @@ async function fetchFact() {
       timezoneId: TIME_ZONE,
       userAgent: userAgent(browser.version()),
     });
-    await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
+    const response = await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
 
     try {
       await page.waitForFunction(
@@ -43,10 +43,10 @@ async function fetchFact() {
       );
     } catch (error) {
       // Найчастіше замість сторінки прийшла заглушка WAF: показати, що саме.
-      const title = await page.title().catch(() => '');
-      const body = await page.locator('body').innerText().catch(() => '');
+      // Заглушка Imperva — iframe без тексту, тому потрібен HTML, а не innerText.
+      const html = await page.content().catch(() => '');
       throw new Error(
-        `DisconSchedule не з'явився. title=${JSON.stringify(title)} body=${JSON.stringify(body.slice(0, 300))}`,
+        `DisconSchedule не з'явився. HTTP ${response?.status()} ${page.url()} html=${JSON.stringify(html.slice(0, 600))}`,
         { cause: error },
       );
     }
