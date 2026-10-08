@@ -1,0 +1,15 @@
+{
+  "name": "friendly-hora",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "scrape": "node --env-file-if-exists=.env src/scrape.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "playwright": "^1.64.0"
+  }
+}
