@@ -1,10 +1,12 @@
 // Забирає DisconSchedule.fact зі сторінки ДТЕК і перезаписує schedule.json, якщо змінилися інтервали черги.
-// Якщо дані отримати не вдалося, завершується з помилкою й файл не чіпає.
+// Про нові чи змінені дні надсилає повідомлення в Telegram.
+// Якщо дані отримати або повідомлення надіслати не вдалося, завершується з помилкою й файл не чіпає.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
-import { buildSchedule, kyivIso, sameSchedule, TIME_ZONE } from './schedule.js';
+import { formatMessage } from './message.js';
+import { buildSchedule, changedDates, kyivIso, sameSchedule, TIME_ZONE } from './schedule.js';
 
 const PAGE_URL = 'https://www.dtek-krem.com.ua/ua/shutdowns';
 const SCHEDULE_FILE = new URL('../schedule.json', import.meta.url);
@@ -78,19 +80,39 @@ async function readSchedule() {
   }
 }
 
+async function sendTelegram(text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) {
+    console.warn('::warning::TELEGRAM_BOT_TOKEN або TELEGRAM_CHAT_ID не задано, повідомлення не надіслано');
+    return;
+  }
+
+  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  });
+  if (!response.ok) throw new Error(`Telegram sendMessage: HTTP ${response.status} ${await response.text()}`);
+}
+
 const next = buildSchedule(await fetchFactWithRetries(), GROUP);
 const current = await readSchedule();
 
 if (current && sameSchedule(current, next)) {
   console.log(`${GROUP}: без змін (версія ДТЕК ${next.source_update})`);
 } else {
+  const changed = changedDates(current, next);
+  if (changed.length > 0) {
+    const text = formatMessage(next, changed);
+    console.log(`${GROUP}: графік змінився (версія ДТЕК ${next.source_update})\n\n${text}`);
+    // Спершу повідомлення, потім файл: якщо Telegram не відповів, наступний запуск спробує ще раз.
+    await sendTelegram(text);
+  } else {
+    console.log(`${GROUP}: прибрано минулі дні, інтервали не змінилися`);
+  }
+
   const { group, source_update, days } = next;
   const schedule = { group, source_update, checked_at: kyivIso(new Date()), days };
   await writeFile(SCHEDULE_FILE, `${JSON.stringify(schedule, null, 2)}\n`);
-
-  console.log(`${GROUP}: графік змінився (версія ДТЕК ${source_update})`);
-  for (const day of days) {
-    const maybe = day.maybe.length ? `; можливі: ${day.maybe.join(', ')}` : '';
-    console.log(`  ${day.date}: ${day.off.join(', ') || 'без відключень'}${maybe}`);
-  }
 }

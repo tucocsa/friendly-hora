@@ -36,7 +36,9 @@ jobs:
       - run: npx playwright install --with-deps --only-shell chromium
       - run: node src/scrape.js
         env:
-          DTEK_GROUP: ${{ vars.DTEK_GROUP }}
+          DTEK_GROUP: ${{ secrets.DTEK_GROUP }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       - name: Commit schedule.json if changed
         run: |
           # add перед diff: інакше новий, ще не відстежуваний файл не потрапить у коміт.

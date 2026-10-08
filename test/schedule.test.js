@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { buildSchedule, kyivDate, kyivIso, parseDay, sameSchedule } from '../src/schedule.js';
+import { buildSchedule, changedDates, kyivDate, kyivIso, parseDay, sameSchedule } from '../src/schedule.js';
 
 const fact = JSON.parse(await readFile(new URL('./fixtures/fact-2026-10-08.json', import.meta.url), 'utf8'));
 
@@ -54,4 +54,22 @@ test('нова версія ДТЕК без змін для черги не вв
   const changed = structuredClone(sameIntervals);
   changed.days[1].off = ['14:30-19:00'];
   assert.ok(!sameSchedule(current, changed));
+});
+
+test('changedDates: нові й змінені дні, але не зниклі минулі', () => {
+  const day = (date, off) => ({ date, off, maybe: [] });
+  const current = { group: 'GPV5.1', days: [day('2026-10-08', ['07:00-14:30']), day('2026-10-09', ['14:30-18:30'])] };
+  const next = (...days) => ({ group: 'GPV5.1', days });
+
+  assert.deepEqual(changedDates(current, next(day('2026-10-09', ['14:30-18:30']))), []);
+  assert.deepEqual(
+    changedDates(current, next(day('2026-10-09', ['14:30-18:30']), day('2026-10-10', []))),
+    ['2026-10-10'],
+  );
+  assert.deepEqual(changedDates(current, next(day('2026-10-09', ['15:00-18:30']))), ['2026-10-09']);
+  assert.deepEqual(changedDates(null, next(day('2026-10-09', []))), ['2026-10-09']);
+  assert.deepEqual(
+    changedDates(current, { group: 'GPV6.2', days: [day('2026-10-09', ['14:30-18:30'])] }),
+    ['2026-10-09'],
+  );
 });

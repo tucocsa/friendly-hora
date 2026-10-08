@@ -93,3 +93,10 @@ export function buildSchedule(fact, group) {
 export function sameSchedule(a, b) {
   return a.group === b.group && isDeepStrictEqual(a.days, b.days);
 }
+
+// Дати, для яких з'явився графік або змінилися інтервали. Минулі дні, що зникли з графіка,
+// не рахуються: інакше щоночі приходило б сповіщення без жодних змін.
+export function changedDates(current, next) {
+  const before = new Map(current?.group === next.group ? current.days.map((day) => [day.date, day]) : []);
+  return next.days.filter((day) => !isDeepStrictEqual(before.get(day.date), day)).map((day) => day.date);
+}
