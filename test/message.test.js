@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { formatMessage } from '../src/message.js';
+import { formatMessage, keepaliveMessage } from '../src/message.js';
 import { buildSchedule } from '../src/schedule.js';
 
 const fact = JSON.parse(await readFile(new URL('./fixtures/fact-2026-10-08.json', import.meta.url), 'utf8'));
@@ -45,6 +45,23 @@ test('день лише з продовженням нічного відклю�
       'Нд, 11 жовтня\nВідключень немає',
     ].join('\n\n'),
   );
+});
+
+test('keepalive: до 50 днів мовчить, далі нагадує з кількістю днів, що лишилися', () => {
+  const lastCommit = new Date('2026-10-09T01:00:00+03:00');
+  const after = (days) => new Date(lastCommit.getTime() + days * 24 * 60 * 60 * 1000);
+
+  assert.equal(keepaliveMessage(lastCommit, after(49.9), 'tucocsa/friendly-hora'), null);
+  assert.equal(
+    keepaliveMessage(lastCommit, after(50), 'tucocsa/friendly-hora'),
+    [
+      'Нагадування про GitHub Actions',
+      'Ваш останній коміт у tucocsa/friendly-hora — 09.10.2026, 50 дн. тому. '
+        + 'Через 60 днів без активності GitHub вимикає розклад, і графік перестане оновлюватися. Залишилось 10 дн.',
+      'Щоб продовжити, зробіть будь-який коміт, наприклад:\ngit commit --allow-empty -m "keepalive" && git push',
+    ].join('\n\n'),
+  );
+  assert.match(keepaliveMessage(lastCommit, after(61)), /коміт — 09\.10\.2026, 61 дн\. тому\. GitHub, ймовірно, вже вимкнув/);
 });
 
 test('через пропущену дату інтервали не зливаються', () => {

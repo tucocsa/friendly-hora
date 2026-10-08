@@ -1,7 +1,13 @@
-// Текст сповіщення про зміну графіка. Чистий модуль без I/O.
+// Тексти повідомлень у Telegram. Чистий модуль без I/O.
+
+import { kyivIso } from './schedule.js';
 
 const MINUTES_PER_DAY = 24 * 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// GitHub вимикає розклад у публічному репозиторії після 60 днів без активності.
+const INACTIVITY_LIMIT_DAYS = 60;
+const REMIND_AFTER_DAYS = 50;
 
 const dayTitle = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const weekday = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', timeZone: 'UTC' });
@@ -66,4 +72,23 @@ export function formatMessage({ days }, changed) {
   });
 
   return ['Графік відключень змінився', ...sections].join('\n\n');
+}
+
+// Нагадування зробити коміт, поки GitHub не вимкнув розклад. null — нагадувати ще рано.
+export function keepaliveMessage(lastCommit, now, repository) {
+  const days = Math.floor((now - lastCommit) / DAY_MS);
+  if (days < REMIND_AFTER_DAYS) return null;
+
+  const [year, month, day] = kyivIso(lastCommit).slice(0, 10).split('-');
+  const where = repository ? ` у ${repository}` : '';
+  const left = INACTIVITY_LIMIT_DAYS - days;
+  const status = left > 0
+    ? `Через ${INACTIVITY_LIMIT_DAYS} днів без активності GitHub вимикає розклад, і графік перестане оновлюватися. Залишилось ${left} дн.`
+    : 'GitHub, ймовірно, вже вимкнув розклад: перевірте Actions → scrape і за потреби натисніть Enable workflow.';
+
+  return [
+    'Нагадування про GitHub Actions',
+    `Ваш останній коміт${where} — ${day}.${month}.${year}, ${days} дн. тому. ${status}`,
+    'Щоб продовжити, зробіть будь-який коміт, наприклад:\ngit commit --allow-empty -m "keepalive" && git push',
+  ].join('\n\n');
 }
