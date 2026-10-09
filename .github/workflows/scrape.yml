@@ -1,9 +1,9 @@
 name: scrape
 
 on:
-  schedule:
-    # Кожні 10 хвилин, час UTC. Зсув на 2 хвилини: на початку години черга GitHub найбільша.
-    - cron: '2-59/10 * * * *'
+  # Кожні 10 хвилин запускає cron-job.org через API (POST .../actions/workflows/scrape.yml/dispatches).
+  # Без schedule: cron GitHub для цього репозиторію давав 2 запуски за 12 годин, а ще
+  # scheduled workflow у публічному репозиторії вимикається після 60 днів без активності.
   workflow_dispatch:
   # Перевірити парсер одразу після змін у ньому. Коміти бота з GITHUB_TOKEN нових запусків не створюють.
   push:
