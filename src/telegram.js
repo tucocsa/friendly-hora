@@ -1,11 +1,11 @@
 // Надсилає текст у чат TELEGRAM_CHAT_ID від бота TELEGRAM_BOT_TOKEN.
-// Без токена чи чату лише попереджає, щоб workflow не падав, поки секрети не задані.
+// Без токена чи чату — помилка, а не попередження: інакше зміна графіка тихо губиться,
+// бо schedule.json оновлюється, а повідомлення так і не йде.
 export async function sendTelegram(text) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) {
-    console.warn('::warning::TELEGRAM_BOT_TOKEN або TELEGRAM_CHAT_ID не задано, повідомлення не надіслано');
-    return;
+    throw new Error('TELEGRAM_BOT_TOKEN або TELEGRAM_CHAT_ID не задано: повідомлення не надіслано, schedule.json не оновлено');
   }
 
   const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
